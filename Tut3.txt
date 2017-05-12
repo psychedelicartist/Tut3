@@ -1,0 +1,210 @@
+﻿import numpy as nm
+
+class nbody:
+
+	def __init__(self,mass = 0,x_pos = 0, y_pos = 0):
+		self.mass = mass
+		self.x_pos = x_pos
+		self.y_pos = y_pos
+
+	var = {'no_of_particles': 10, 'G': 6.67*10**-11}
+
+	def pot_E(self,m,x,y):
+		r = nm.zeros(len(x))
+		E_top = nm.zeros(len(r))
+		f = nm.ones(len(r))
+		E = nm.zeros(len(r))
+		k = ()
+		for k in range(0,len(m)):
+			for i in range(0,len(x)):
+				r[i] = nm.sqrt((x[k]-x[i])**2 + (y[k]-y[i])**2)
+				if r[i] != 0:
+					f[i] = r[i]
+			for i in range(0,len(x)):
+				E_top[i] = nbody.var['G']*m[k]*m[i]
+			for i in range(0,len(x)):
+				if r[i] != 0:
+					E[i] = E_top[i]/r[i]
+			print (E.sum())
+            
+
+if __name__=="__main__":
+
+	s = nbody.var['no_of_particles']
+	x = nm.random.randint(1,10,size=s)
+	y = nm.random.randint(1,10,size=s)
+	m = nm.random.randint(1,4,size=s)
+	test = nbody(m,x,y)
+	
+	print ('mass is ' + repr(test.mass))
+	print ('x_pos is ' + repr(test.x_pos))
+	print ('y_pos is ' + repr(test.y_pos),  "with potentials below")
+
+	energy = test.pot_E(test.mass,test.x_pos,test.y_pos)
+
+'''Question 2'''
+
+import numpy as nm
+
+class nbody:
+
+	def __init__(self,mass = 0,x_pos = 0, y_pos = 0):
+		self.mass = mass
+		self.x_pos = x_pos
+		self.y_pos = y_pos
+
+	var = {'no_of_particles': 10, 'G': 6.67*10**-11}
+
+	def SoftenedForce_E(self,m,x,y):
+		r = nm.zeros(len(x))
+		E_top = nm.zeros(len(r))
+		f = nm.ones(len(r))
+		E = nm.zeros(len(r))
+		k = ()
+		for k in range(0,len(m)):
+			for i in range(0,len(x)): #with softening factor
+				r[i] = (((x[k]-x[i])**2 + (y[k]-y[i])**2 +  0.9)**1.5/nm.sqrt(x[k]-x[i])**2 + (y[k]-y[i])**2) 
+				if r[i] != 0:
+					f[i] = r[i]
+			for i in range(0,len(x)):
+				E_top[i] = nbody.var['G']*m[k]*m[i]
+			for i in range(0,len(x)):
+				if r[i] != 0:
+					E[i] = E_top[i]/r[i]
+			print (E.sum())
+            
+
+if __name__=="__main__":
+
+	s = nbody.var['no_of_particles']
+	x = nm.random.randint(1,10,size=s)
+	y = nm.random.randint(1,10,size=s)
+	m = nm.random.randint(1,4,size=s)
+	test = nbody(m,x,y)
+	
+	print ('mass is ' + repr(test.mass))
+	print ('x_pos is ' + repr(test.x_pos))
+	print ('y_pos is ' + repr(test.y_pos),  "with softened potential below")
+
+	energy = test.SoftenedForce_E(test.mass,test.x_pos,test.y_pos)
+
+'''Question 3'''
+
+from __future__ import division, print_function
+
+import numpy
+
+
+n= 101
+
+tfin= 2*numpy.pi
+
+
+
+dt= tfin/(n-1)
+
+s= numpy.arange(n)
+
+y= numpy.sinc(dt*s)
+
+fy= numpy.fft.fft(y)
+
+wps= numpy.linspace(0,2*numpy.pi,n+1)[:-1]
+
+
+basis= 1.0/n*numpy.exp(1.0j * wps * s[:,numpy.newaxis])
+
+
+recon_y= numpy.dot(basis,fy)
+
+
+yerr= numpy.max(numpy.abs(y-recon_y))
+print('yerr:',yerr)
+
+
+lin_fy= numpy.linalg.solve(basis,y)
+
+
+fyerr= numpy.max(numpy.abs(fy-lin_fy))
+print('fyerr',fyerr)
+
+'''Question 4'''
+
+import numpy
+def simulate_lorentzian(x,a=2.5,b=1,c=5):#a = sig, b=amp, c=cent
+    dat=a/(b+(x-c)**2)
+    dat+=numpy.random.randn(x.size)
+    return dat
+
+#get a trial step. Take gaussian random numbers and scale by an input vector
+def get_trial_offset(sigs):
+    return sigs*numpy.random.randn(sigs.size)
+
+class Lorentzian:
+    def __init__(self,x,a=2.5,b=1,c=5,offset=0):
+        self.x=x
+        self.y=simulate_lorentzian(x,a,b,c)+offset
+        self.err=numpy.ones(x.size)
+        self.a=a
+        self.b=b
+        self.c=c
+        self.offset=offset
+
+    def get_chisq(self,vec):
+        a=vec[0]
+        b=vec[1]
+        c=vec[2]
+        off=vec[3]
+
+        pred=off+a/(b+(self.x-c)**2)
+        chisq=numpy.sum(  (self.y-pred)**2/self.err**2)
+        return chisq
+
+def run_mcmc(data,start_pos,nstep,scale=None):
+    nparam=start_pos.size
+    params=numpy.zeros([nstep,nparam+1])
+    params[0,0:-1]=start_pos
+    cur_chisq=data.get_chisq(start_pos)
+    cur_pos=start_pos.copy()
+    if scale==None:
+        scale=numpy.ones(nparam)
+    for i in range(1,nstep):
+        new_pos=cur_pos+get_trial_offset(scale)
+        new_chisq=data.get_chisq(new_pos)
+        if new_chisq<cur_chisq:
+            accept=True
+        else:
+            delt=new_chisq-cur_chisq
+            prob=numpy.exp(-0.5*delt)
+            if numpy.random.rand()<prob:
+                accept=True
+            else:
+                accept=False
+        if accept: 
+            cur_pos=new_pos
+            cur_chisq=new_chisq
+        params[i,0:-1]=cur_pos
+        params[i,-1]=cur_chisq
+    return params
+
+
+if __name__=='__main__':
+    
+    #get a realization of a gaussian, with noise added
+    x=numpy.arange(-5,5,0.01)
+    dat=Lorentzian(x,b=2.5)
+
+    #pick a random starting position, and guess some errors
+    guess=numpy.array([0.3,1.2,0.3,-0.2])
+    scale=numpy.array([0.1,0.1,0.1,0.1])
+    nstep=100000
+    chain=run_mcmc(dat,guess,nstep,scale)
+    nn=numpy.round(0.2*nstep)
+    chain=chain[nn:,:]
+    
+    #pull true values out, compare to what we got
+    param_true=numpy.array([dat.a,dat.b,dat.c,dat.offset])
+    for i in range(0,param_true.size):
+        val=numpy.mean(chain[:,i])
+        scat=numpy.std(chain[:,i])
+print ([param_true[i],val,scat])
